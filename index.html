@@ -5,22 +5,12 @@
 	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
 -->
 <html>
-	<script>
-		function handleLoad(e) {
-		  console.log('Loaded import: ' + e.target.href);
-		}
-		function handleError(e) {
-		  console.log('Error loading import: ' + e.target.href);
-		}
-	  </script>
 	<head>
-		<!-- <link rel="import" href="menu.html" onload="handleLoad(event)" onerror="handleError(event)"> -->
 		<title>Luke Hall | Graphics Engineer</title>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
 		<link rel="stylesheet" href="assets/css/main.css" />
 		<noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
-		
 	</head>
 	<body class="is-preload">
 		<!-- Wrapper -->
@@ -46,19 +36,14 @@
 					</header>
 
 				<!-- Menu -->
-				<div include-html="menu.html"></div>
-				<!-- <div id="menu">
-					<script>
-						var link = document.querySelector('link[rel="import"]');
-						console.log(link);
-						// Clone the <template> in the import.
-						var template = link.querySelector('template');
-						console.log(template);
-						var clone = document.importNode(template.content, true);
-					
-						document.querySelector('#menu').appendChild(clone);
-					  </script>
-				</div> -->
+				<nav id="menu">
+					<h2>Menu</h2>
+					<ul>
+						<li><a href="index.html">Home</a></li>
+						<li><a href="generic.html">About</a></li>
+						<li><a href="generic.html">Portfolio</a></li>
+					</ul>
+				</nav>
 
 				<!-- Main -->
 					<div id="main">
@@ -79,18 +64,18 @@
 										</div>
 									</a>
 								</article>
-								<!-- <article class="style2">
+								<article class="style2">
 									<span class="image">
-										<img src="images/pic02.jpg" alt="" />
+										<img src="images/csm.jpg" alt="" />
 									</span>
-									<a href="generic.html">
-										<h2>Lorem</h2>
+									<a href="csm.html">
+										<h2>Cascaded Shadow Mapping</h2>
 										<div class="content">
-											<p>Sed nisl arcu euismod sit amet nisi lorem etiam dolor veroeros et feugiat.</p>
+											<p>An overview of my implementation of a classic shadow mapping technique for directional lights.</p>
 										</div>
 									</a>
 								</article>
-								<article class="style3">
+								<!--<article class="style3">
 									<span class="image">
 										<img src="images/pic03.jpg" alt="" />
 									</span>
@@ -229,16 +214,9 @@
 							<section>
 								<h2>Follow</h2>
 								<ul class="icons">
-									<!-- <li><a href="#" class="icon brands style2 fa-twitter"><span class="label">Twitter</span></a></li>
-									<li><a href="#" class="icon brands style2 fa-facebook-f"><span class="label">Facebook</span></a></li>
-									<li><a href="#" class="icon brands style2 fa-instagram"><span class="label">Instagram</span></a></li>
-									<li><a href="#" class="icon brands style2 fa-dribbble"><span class="label">Dribbble</span></a></li> -->
 									<li><a href="https://github.com/hallmluke" class="icon brands style2 fa-github"><span class="label">GitHub</span></a></li>
 									<li><a href="https://www.linkedin.com/in/lukemhall/" class="icon brands style2 fa-linkedin"><span class="label">LinkedIn</span></a></li>
 									<li><a href="" class="icon brands style2 fa-youtube"><span class="label">YouTube</span></a></li>
-									<!-- <li><a href="#" class="icon brands style2 fa-500px"><span class="label">500px</span></a></li>
-									<li><a href="#" class="icon solid style2 fa-phone"><span class="label">Phone</span></a></li>
-									<li><a href="#" class="icon solid style2 fa-envelope"><span class="label">Email</span></a></li> -->
 								</ul>
 							</section>
 							<!--<ul class="copyright">
@@ -255,7 +233,6 @@
 			<script src="assets/js/breakpoints.min.js"></script>
 			<script src="assets/js/util.js"></script>
 			<script src="assets/js/main.js"></script>
-			<script src="assets/js/include.js"></script>
 
 	</body>
 </html>
