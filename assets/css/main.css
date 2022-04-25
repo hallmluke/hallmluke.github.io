@@ -2352,10 +2352,19 @@ input, select, textarea {
 				width: 100%;
 			}
 
+			body.is-preload .image.main {
+				-moz-transform: scale(0.9);
+				-webkit-transform: scale(0.9);
+				-ms-transform: scale(0.9);
+				transform: scale(0.9);
+				opacity: 0;
+			}
+
 		.image.main {
 			display: block;
 			margin: 0 0 3em 0;
 			width: 100%;
+			transition: opacity 0.5s ease;
 		}
 
 			.image.main img {
