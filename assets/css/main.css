@@ -3356,3 +3356,31 @@ input, select, textarea {
 			}
 
 		}
+
+/* Profile */
+
+.profile {
+	display: flex;
+	flex-direction: row;
+}
+
+.profile-info {
+	padding: 2em;
+	align-content: center;
+}
+
+.profile-info h1 {
+	margin-top: 10%;
+	margin-bottom: 0em;
+}
+
+.profile-info .icon {
+	padding: 5px;
+	font-size: 2em;
+	vertical-align: middle;
+}
+
+.profile-image {
+	width: 12em;
+	border-radius: 100%;
+}
