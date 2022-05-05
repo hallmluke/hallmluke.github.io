@@ -147,14 +147,83 @@ glm::mat4 voxelView = glm::lookAt(glm::vec3(0.0f, 0.0f, scales[i].z / 2), positi
 </code></pre>
 
 							Most of the outputs are simply pass-through, but note the calculation of gl_Position. After finding the normal of the primitive (p), we find its dominant axis and orient it accordingly to generate the most possible fragments.
+							And of course to ensure fragments are generated for all triangles, we ensure that back-face culling is not enabled and depth testing is not performed.
 							</p>
 
-							<p>At this point we are most of the way there to voxelizing our scene. We can calculate the stored color using the same method as would be used in our lighting pass. As an important aside, since we are using the probe method mentioned earlier, 
-							   we 
+							<p>At this point we are most of the way there to voxelizing our scene. We can calculate the stored color using the same method as would be used for direct illumination in our lighting pass. As an important aside, since we are using the probe method mentioned earlier, 
+							   we will need to create an additional shadow map for our directional light (if one is present) specifically for voxelization. From here, we pack our color and normal information into unsigned integers. As mentioned earlier, we store these values using atomic operations.
+							   Many implementations opt to keep a moving average of values, using an atomic add operation and eventually dividing by the total number of fragments evaluated. I opted for a simpler approach of only storing the maximum values for a given voxel. 
 							</p>
+
+							<p>Finally, we need to take the information that is stored in this buffer, unpack it into a 3D texture we can sample from and generate mipmaps for this texture. The unpacking and storing can be done in a compute shader that is executed after the voxelization process. Here's a snippet of the relevant compute shader:
+<pre><code>
+	void main() {
+
+		const uint globalInvocationIndex = getGlobalInvocationIndex();
+		VoxelType voxel = voxels[globalInvocationIndex];
+	
+		vec4 color = DecodeColor(voxel.color);
+	
+		imageStore(voxelTex, ivec3(gl_GlobalInvocationID), color);
+	
+	}
+</code></pre>
+							</p>
+
+							<p>We have now voxelized the part of our scene contained in our GI probe. To ensure we're getting the results we expect, it would be wise to visualize our voxel probe. I wrote a simple ray-marching shader with nearest filtering on the 3D texture to visualize it. It's certainly not perfect as it does produce some odd shimmering, but for debug
+								visualization purposes it gets the job done. The results are shown at this end of the video at the bottom of this article. RenderDoc was absolutely invaluable as well when trying to troubleshoot this voxelization process.
+							</p>
+
+							<h2>Cone Tracing</h2>
+							<p>At last we are at the point where we can actually use this data we've spent so much time generating. To gather radiance for a particular pixel, we cone trace in many directions and average our result. A single cone trace involves choosing a direction, taking small, discreet steps along that direction, sampling our voxel grid at each point,
+								and stopping when we've either reached a specified occlusion value (we've hit a surface) or reached a maximum distance. This at first may sound suspiciously like ray-marching. Where does the "cone" part come into play?
+							</p>
+
+							<p>The difference is that we sample from different mip levels depending on how far we are from our origin point. To determine which mip level we sample from, we need to calculate the diameter of our cone at each step. We then choose the smallest mip level such that the voxels represent a size bigger than that diameter. Here is a snippet of the cone tracing process:
+<pre><code>
+	while(dist < maxDistance && alpha < 1) {
+
+        float diameter = max(1.0f, 2 * coneAperture * dist);
+        float mip = log2( diameter * GISubdiv / GIScale.x * mipModifier); 
+
+        vec3 worldPosition = startPos + coneDirection * dist;
+
+        ivec3 voxelPosition = scaleAndBias(worldPosition);
+
+        vec3 voxelTexPosition = vec3(voxelPosition) / GISubdiv;
+
+        if(mip >= 5) {
+            break;
+        }
+
+        vec4 sampled = textureLod(VoxelTex, voxelTexPosition, mip);
+
+		...
+	}
+</code></pre>
+
+							For diffuse global illumination, we want to sample enough cones such that we roughly cover the entire hemisphere of the surface. We can achieve higher quality by using more cones with smaller aperture, but it is more expensive to do so.
+							For specular global illumination (glossy/reflective), we actually only need to sample one cone. The direction of the cone is the reflection of the viewing angle off the surface and the aperture can be adjusted based on the roughness of the surface.
+							Note that this does not give crisp reflections the way screen-space reflections or ray-traced reflections do, but it can be useful for rough surfaces or as a fallback.
+							</p>
+
+							<h2>Results</h2>
+							<p>The video below showcases what the end result looks like using this method. For exaggerated effect, all ambient lighting has been removed, and, as shown in the video, I increase the contribution of indirect lighting to show the effect.</p>
+
 							<div class="youtube-video-container">
 								<iframe width="280" height="157" src="https://www.youtube.com/embed/s5Irf37hLLA" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 							</div>
+
+							<p>My full implementation is open source as part of my Walker Engine renderer.</p>
+							<p><a href="https://github.com/hallmluke/WalkerEngine" class="button primary">Walker Engine Source</a></p>
+							
+							<h2>References and Further Reading</h2>
+							<ul>
+							<li><a href="https://research.nvidia.com/sites/default/files/pubs/2011-09_Interactive-Indirect-Illumination/GIVoxels-pg2011-authors.pdf">Original Paper by Crassin et al.</a></li>
+							<li><a href="https://www.ogre3d.org/2019/08/05/voxel-cone-tracing">OGRE3D Blog Post</a></li>
+							<li><a href="https://wickedengine.net/2017/08/30/voxel-based-global-illumination/">Wicked Engine Blog Post</a></li>
+							<li><a href="https://github.com/Neconspictor/Euclid">Euclid Engine Implementation</a></li>
+						</ul>
 						</div>
 					</div>
 
