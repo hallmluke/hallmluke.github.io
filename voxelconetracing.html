@@ -100,13 +100,13 @@ void main() {
 <pre><code>
 class GIProbe {
 	public:
-		std::shared_ptr<Texture3D> VoxelTex;
+		std::shared_ptr&#60;Texture3D&#62; VoxelTex;
 		uint32_t Subdiv = 128;
 		float Energy = 1.0f;
 
 		GIProbe() = default;
 };
-</code></pre>>
+</code></pre>
 							The above is a component that can be attached to a scene object with its own position/scale. The position/scale represent where it is in the scene. It contains a pointer to a 3D texture that the previous buffer is converted into (more on this later). The "Subdiv" represents the level of detail
 							of the probe. For example, a probe with 128 Subdiv would be a 128 x 128 x 128 voxel grid. The "Energy" is a modifier to increase the effect of the indirect lighting for stylized/physically implausible results.
 							</p>
