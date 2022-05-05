@@ -110,6 +110,48 @@ class GIProbe {
 							The above is a component that can be attached to a scene object with its own position/scale. The position/scale represent where it is in the scene. It contains a pointer to a 3D texture that the previous buffer is converted into (more on this later). The "Subdiv" represents the level of detail
 							of the probe. For example, a probe with 128 Subdiv would be a 128 x 128 x 128 voxel grid. The "Energy" is a modifier to increase the effect of the indirect lighting for stylized/physically implausible results.
 							</p>
+
+							<p>Now that we know the probe's position, scale and subdivisions, we can begin the voxelization process. We first construct an orthographic projection matrix that covers the bounds of the voxel probe and a view matrix looking toward the center of the probe in the -Z direction.
+								This is fairly trivial to do using GLM's ortho and lookat functions:
+<pre><code>
+glm::mat4 voxelProjection = glm::ortho(-scales[i].x, scales[i].x, -scales[i].y, scales[i].y, -scales[i].z, scales[i].z);
+glm::mat4 voxelView = glm::lookAt(glm::vec3(0.0f, 0.0f, scales[i].z / 2), positions[i], glm::vec3(0.0f, 1.0f, 0.0f));
+</code></pre>
+
+							However, we have a problem. Rendering the scene from only a single view will fail to produce fragments for some triangles that should be accounted for. For example, consider a triangle whose normal is straight up. The graphics pipeline will not produce fragments for this triangle,
+							and as such, will not store a value in the buffer. A naive solution would be to render the scene from three directions for each axis. This would work but would be incredibly inefficient. A better solution is to project each triangle onto its dominant axis in a geometry shader
+							such that each triangle produces the maximum number of fragments. We should ensure that the actual position of the fragment is stored independently such that we still index into the correct location in the voxel grid. Here's a snippet of the geometry shader that performs this projection:
+
+<pre><code>
+	void main() {
+	
+		const vec3 p1 = GeomPos[1] - GeomPos[0];
+		const vec3 p2 = GeomPos[2] - GeomPos[0];
+		const vec3 p = abs(cross(p1, p2)); 
+		for(uint i = 0; i < 3; ++i){
+			FragPos = GeomPos[i];
+			NormalFrag = NormalGeom[i];
+			TexCoordsFrag = TexCoordsGeom[i];
+			FragPosLightSpace = GeomPosLightSpace[i];
+			if(p.z > p.x && p.z > p.y){
+				gl_Position = projection * view * vec4(FragPos.x, FragPos.y, FragPos.z, 1);
+			} else if (p.x > p.y && p.x > p.z){
+				gl_Position = projection * view * vec4(FragPos.z, FragPos.y, FragPos.x, 1);
+			} else {
+				gl_Position = projection * view * vec4(FragPos.x, FragPos.z, FragPos.y, 1);
+			}
+			EmitVertex();
+		}
+		EndPrimitive();
+	}
+</code></pre>
+
+							Most of the outputs are simply pass-through, but note the calculation of gl_Position. After finding the normal of the primitive (p), we find its dominant axis and orient it accordingly to generate the most possible fragments.
+							</p>
+
+							<p>At this point we are most of the way there to voxelizing our scene. We can calculate the stored color using the same method as would be used in our lighting pass. As an important aside, since we are using the probe method mentioned earlier, 
+							   we 
+							</p>
 							<div class="youtube-video-container">
 								<iframe width="280" height="157" src="https://www.youtube.com/embed/s5Irf37hLLA" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 							</div>
