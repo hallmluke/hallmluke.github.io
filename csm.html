@@ -1,0 +1,107 @@
+<!DOCTYPE HTML>
+<!--
+	Phantom by HTML5 UP
+	html5up.net | @ajlkn
+	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+-->
+<html>
+	<head>
+		<title>Cascaded Shadow Mapping | Luke Hall</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<link rel="stylesheet" href="assets/css/main.css" />
+		<noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
+	</head>
+	<body class="is-preload">
+		<!-- Wrapper -->
+			<div id="wrapper">
+
+				<!-- Header -->
+				<header id="header">
+					<div class="inner">
+
+						<!-- Home -->
+						<a href="index.html" class="logo fas fa-home">
+							<!-- <span class="symbol"><img src="images/logo.svg" alt="" /></span> -->
+						</a>
+
+						<!-- Nav -->
+							<nav>
+								<ul>
+									<li><a href="#menu">Menu</a></li>
+								</ul>
+							</nav>
+
+					</div>
+				</header>
+
+			<!-- Menu -->
+				<nav id="menu">
+					<h2>Menu</h2>
+					<ul>
+						<li><a href="index.html">Home</a></li>
+						<li><a href="about.html">About</a></li>
+						<li><a href="portfolio.html">Portfolio</a></li>
+					</ul>
+				</nav>
+
+				<!-- Main -->
+					<div id="main">
+						<div class="inner">
+							<h1>Cascaded Shadow Mapping</h1>
+							<h4>Last Updated: 5/5/22</h4>
+							<span class="image main"><img src="images/csmheader.jpg" alt="" /></span>
+							<h2>What is Cascaded Shadow Mapping?</h2>
+							<p>Cascaded shadow mapping is a way of addressing limited resolution on shadow maps for directional lights. We can create a normal shadow map for a directional light by fitting an orthographic projection matrix to the view frustum.
+								This allows us to only render a shadow map only for the part of the scene that is visible. However, the view frustum can be quite large. This can lead the resulting shadow map to lack detail due to having a low texel density.
+								We could attempt to solve this problem by increasing the resolution of the shadow map, but to get the visual fideltiy we desire would require an astronomically large shadow map (upwards of 16k). This would use an absurd amount
+								of memory and would take a long time to render every frame. A better solution would be to split our view frustum into several sub-frusta and create several shadow maps for each sub-frusta. These splits are known as <i>cascades</i>,
+								hence the term cascaded shadow mapping.
+							</p>
+
+							<p>While learning about cascaded shadow mapping, I came across several very helpful tutorials on the subject. For example, <a href="https://learnopengl.com/Guest-Articles/2021/CSM">this one</a> on the Learn OpenGL site written
+							by Márton Árbócz was very helpful. However, I felt like it served better as a proof-of-concept and a beginner tutorial than a complete solution, as there were several noticable artifacts with this implementation and didn't quite
+							have the visual fidelity I was looking for. In particular, I noticed two things: the first was that there was an odd shimmering of the shadows. The second was that the transition between cascades was quite obvious and very distracting.
+							As such I mainly want to focus on the improvements I have made to this system: the stabilzation/texel snapping that fixes the former issue and the cascade blending that fixes the latter.</p>
+
+							<h2>Stabilization and Texel Snapping</h2>
+							<p></p>
+
+							<div class="youtube-video-container">
+							<iframe width="280" height="157" src="https://www.youtube.com/embed/0ALkTY7X0i0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+							</div>
+							<h2>Results</h2>
+
+							<p>My full implementation is open source as part of my Walker Engine renderer.</p>
+							<p><a href="https://github.com/hallmluke/WalkerEngine" class="button primary">Walker Engine Source</a></p>
+							
+							<h2>References and Further Reading</h2>
+
+						</div>
+					</div>
+
+				<!-- Footer -->
+				<footer id="footer">
+					<div class="inner">
+						<section>
+							<h2>Follow</h2>
+							<ul class="icons">
+								<li><a href="https://github.com/hallmluke" class="icon brands style2 fa-github"><span class="label">GitHub</span></a></li>
+								<li><a href="https://www.linkedin.com/in/lukemhall/" class="icon brands style2 fa-linkedin"><span class="label">LinkedIn</span></a></li>
+								<li><a href="https://www.youtube.com/channel/UCUrmUJxlNLHAPSd9ZVT69EA" class="icon brands style2 fa-youtube"><span class="label">YouTube</span></a></li>
+							</ul>
+						</section>
+					</div>
+				</footer>
+
+			</div>
+
+		<!-- Scripts -->
+			<script src="assets/js/jquery.min.js"></script>
+			<script src="assets/js/browser.min.js"></script>
+			<script src="assets/js/breakpoints.min.js"></script>
+			<script src="assets/js/util.js"></script>
+			<script src="assets/js/main.js"></script>
+
+	</body>
+</html>
