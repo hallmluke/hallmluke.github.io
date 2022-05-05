@@ -49,10 +49,67 @@
 					<div id="main">
 						<div class="inner">
 							<h1>Voxel Cone Tracing</h1>
+							<h4>Last Updated: 5/4/22</h4>
 							<span class="image main"><img src="images/vctheader.png" alt="" /></span>
-							<p>Insert my write-up on VCT</p>
-							<!-- <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Duis dapibus rutrum facilisis. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Etiam tristique libero eu nibh porttitor fermentum. Nullam venenatis erat id vehicula viverra. Nunc ultrices eros ut ultricies condimentum. Mauris risus lacus, blandit sit amet venenatis non, bibendum vitae dolor. Nunc lorem mauris, fringilla in aliquam at, euismod in lectus. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. In non lorem sit amet elit placerat maximus. Pellentesque aliquam maximus risus, vel venenatis mauris vehicula hendrerit.</p>
-							<p>Interdum et malesuada fames ac ante ipsum primis in faucibus. Pellentesque venenatis dolor imperdiet dolor mattis sagittis. Praesent rutrum sem diam, vitae egestas enim auctor sit amet. Pellentesque leo mauris, consectetur id ipsum sit amet, fersapien risus, commodo eget turpis at, elementum convallis elit. Pellentesque enim turpis, hendrerit tristique lorem ipsum dolor.</p> -->
+							<h2>What is Voxel Cone Tracing?</h2>
+							<p>Voxel Cone Tracing (VCT) is a technique originally proposed by NVIDIA researchers in 2011 in <a href="https://research.nvidia.com/sites/default/files/pubs/2011-09_Interactive-Indirect-Illumination/GIVoxels-pg2011-authors.pdf">this paper.</a>
+							This method of calculating indirect lighting has been mostly sidelined recently with the advent of hardware-accelerated raytracing (such as RTX) allowing more sophisticated methods of calculating GI--such as <a href="https://jcgt.org/published/0008/02/01/">ray-traced irradiance fields</a>, a topic I may wish to explore in the future.
+							However, I had never implemented a GI system in a renderer before, and VCT interested me for a few reasons. First, I (sadly) do not have a GPU with hardware-accelerated raytracing at the moment. That eliminated many options for me. Similarly, I wanted a system that could run smoothly (~60 FPS) on older, mid-range hardware (such as my 1050Ti).
+							Second, I found that while some implementation details are tricky, the concept of VCT is fairly intuitive. As such, I set out to implement a (simplified) version of the paper mentioned above.</p>
+
+							<p>VCT can be broken down into two stages. The first is the voxelization of the scene and its illumination into memory. For those unfamiliar, a voxel is simply a value in a 3D grid. So to voxelize the scene is to take the scene and store all relevant information (illumination, normal) into this grid structure. This allows for 
+								an efficient lookup for illumination at any given point. The second stage is to sample this data to calculate indirect illumination. For each pixel, in addition to the direct illumination calculations, we can perform additional calculations to sample nearby voxels for their illumination data, allowing us to light that pixel accordingly.
+							</p>
+
+							<h2>Voxelization</h2>
+							<p>So how do we even begin take our scene and convert it into this grid structure? What part of the scene are we voxelizing? Moreover, what is this grid structure in memory? For the first question, we can actually make use of the fixed-function graphics pipeline. By that I mean, we can treat this almost like an additional render pass, but instead of
+								our output being a framebuffer texture target, our fragments can instead store values in a buffer. Below is a small snippet of a GLSL fragment shader that demonstrates what I mean.
+								<pre><code>
+...							
+struct VoxelType
+{
+    uint color;
+    uint normal;
+};
+
+layout (std140, binding = 1) buffer VoxelBuffer {
+    VoxelType voxels[];
+};
+
+...
+
+void main() {
+
+    ivec3 voxel = scaleAndBias(FragPos);
+
+	... 
+    uint id = flatten3D(uvec3(voxel), uvec3(GISubdiv));
+    atomicMax(voxels[id].color, encodedColor);
+    atomicMax(voxels[id].normal, encodedNormal);
+
+}
+								</code></pre>
+
+							In the above code, for each fragment we're storing values using the atomicMax operation (more on this later) in this buffer that is representative of our voxel grid. Based on the position of our fragment, we can index into this buffer and store our information. In this example, we're storing an encoded value of our color and the normal of the surface.
+							</p>
+
+							<p>I mentioned that we could use the fragment's global position to index into this structure. How do we go from a global position of a fragment to an index in this buffer? Well, it depends on your desired implementation. There are two ways to think about where this grid lives in 3D space.
+								The first is to have this grid be relative to the current view/camera. There are several possible advantages to this. We would not need to manually place bounds for our voxel. We would only be voxelizing data we need for the current frame, not values that may not get seen. However, this would require re-voxelization every frame, as any change in view would invalidate our previous voxel data.
+								The second, and the method I chose that is also used by <a href="https://docs.godotengine.org/en/latest/classes/class_voxelgi.html">popular game engine Godot</a>, is to place "probes" (bounds for the grid) into the scene manually for regions we wish to voxelize. This also allows us to simply voxelize offline or at load-time, greatly reducing the computation required. This, of course, has the obvious drawback that GI is static in the scene. Depending on the capability of the underlying hardware the renderer could either
+								use the "static" data or revoxelize every frame. My definition of a probe is fairly simple:
+<pre><code>
+class GIProbe {
+	public:
+		std::shared_ptr<Texture3D> VoxelTex;
+		uint32_t Subdiv = 128;
+		float Energy = 1.0f;
+
+		GIProbe() = default;
+};
+</code></pre>>
+							The above is a component that can be attached to a scene object with its own position/scale. The position/scale represent where it is in the scene. It contains a pointer to a 3D texture that the previous buffer is converted into (more on this later). The "Subdiv" represents the level of detail
+							of the probe. For example, a probe with 128 Subdiv would be a 128 x 128 x 128 voxel grid. The "Energy" is a modifier to increase the effect of the indirect lighting for stylized/physically implausible results.
+							</p>
 							<div class="youtube-video-container">
 								<iframe width="280" height="157" src="https://www.youtube.com/embed/s5Irf37hLLA" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 							</div>
@@ -62,43 +119,14 @@
 				<!-- Footer -->
 				<footer id="footer">
 					<div class="inner">
-						<!-- <section>
-							<h2>Get in touch</h2>
-							<form method="post" action="#">
-								<div class="fields">
-									<div class="field half">
-										<input type="text" name="name" id="name" placeholder="Name" />
-									</div>
-									<div class="field half">
-										<input type="email" name="email" id="email" placeholder="Email" />
-									</div>
-									<div class="field">
-										<textarea name="message" id="message" placeholder="Message"></textarea>
-									</div>
-								</div>
-								<ul class="actions">
-									<li><input type="submit" value="Send" class="primary" /></li>
-								</ul>
-							</form>
-						</section> -->
 						<section>
 							<h2>Follow</h2>
 							<ul class="icons">
-								<!-- <li><a href="#" class="icon brands style2 fa-twitter"><span class="label">Twitter</span></a></li>
-								<li><a href="#" class="icon brands style2 fa-facebook-f"><span class="label">Facebook</span></a></li>
-								<li><a href="#" class="icon brands style2 fa-instagram"><span class="label">Instagram</span></a></li>
-								<li><a href="#" class="icon brands style2 fa-dribbble"><span class="label">Dribbble</span></a></li> -->
 								<li><a href="https://github.com/hallmluke" class="icon brands style2 fa-github"><span class="label">GitHub</span></a></li>
 								<li><a href="https://www.linkedin.com/in/lukemhall/" class="icon brands style2 fa-linkedin"><span class="label">LinkedIn</span></a></li>
 								<li><a href="https://www.youtube.com/channel/UCUrmUJxlNLHAPSd9ZVT69EA" class="icon brands style2 fa-youtube"><span class="label">YouTube</span></a></li>
-								<!-- <li><a href="#" class="icon brands style2 fa-500px"><span class="label">500px</span></a></li>
-								<li><a href="#" class="icon solid style2 fa-phone"><span class="label">Phone</span></a></li>
-								<li><a href="#" class="icon solid style2 fa-envelope"><span class="label">Email</span></a></li> -->
 							</ul>
 						</section>
-						<!--<ul class="copyright">
-							<li>&copy; Untitled. All rights reserved</li><li>Design: <a href="http://html5up.net">HTML5 UP</a></li>
-						</ul>-->
 					</div>
 				</footer>
 
