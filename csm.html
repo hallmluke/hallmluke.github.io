@@ -73,14 +73,14 @@
 
 							<p>As you can see, as the camera moves the edges of the shadows appear to move which creates very distracting and ugly artifacts. There are two causes of this: the first is that as the camera moves and rotates, the shadow map for an individual cascade
 							that is tightly fitted to the cascade changes in size and rotation depending on the orientation. The second is that if the camera moves in such a way that the shadow map is offset by a fraction of a texel, the change in detail at the edges of the shadow map will
-							cause inconsistent values at the edges. Let's first talk about how to solve the former problem: stablizing the size and rotation.
+							cause inconsistent values at the edges. Let's first talk about how to solve the former problem: stabilizing the size and rotation.
 							</p>
 
-							<p>We can stablize the size of the shadow map by instead of tightly fitting our projection matrix to the cascade, wrapping the cascade in a sphere and then tightly fitting our projection matrix to that instead. This may not be immediately clear how this solves the problem, but this figure (from Michal Valient's article "Stable Rendering of Cascaded Shadow Maps" in ShaderX 6) demonstrates nicely:
+							<p>We can stabilize the size of the shadow map by instead of tightly fitting our projection matrix to the cascade, wrapping the cascade in a sphere and then tightly fitting our projection matrix to that instead. This may not be immediately clear how this solves the problem, but this figure (from Michal Valient's article "Stable Rendering of Cascaded Shadow Maps" in ShaderX 6) demonstrates nicely:
 								<span class="image smallfit"><img src="images/csmfigure1.png"></span>
 							</p>
 
-							<p>As shown in the figure above, instead of re-sizing or re-orienting our maps to tightly fit the sub-frusta, we instead fit the bounding sphere. This has the small drawback of wasting some memory due to overlap, but is very effective at stablizing our final result. The calculation of these bounding spheres is fairly straightforward. Here's a snippet from my implementation in Walker Engine:</p>
+							<p>As shown in the figure above, instead of re-sizing or re-orienting our maps to tightly fit the sub-frusta, we instead fit the bounding sphere. This has the small drawback of wasting some memory due to overlap, but is very effective at stabilizing our final result. The calculation of these bounding spheres is fairly straightforward. Here's a snippet from my implementation in Walker Engine:</p>
 
 							<pre><code>
 BoundingSphere DirectionalLight::CalculateFrustumBoundingSphere(Camera&amp; camera, const float nearPlane, const float farPlane)
