@@ -65,11 +65,80 @@
 							As such I mainly want to focus on the improvements I have made to this system: the stabilzation/texel snapping that fixes the former issue and the cascade blending that fixes the latter.</p>
 
 							<h2>Stabilization and Texel Snapping</h2>
-							<p></p>
+							<p>The shimmering problem is showcased well in this video by Chetan Jags:</p>
 
 							<div class="youtube-video-container">
 							<iframe width="280" height="157" src="https://www.youtube.com/embed/0ALkTY7X0i0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 							</div>
+
+							<p>As you can see, as the camera moves the edges of the shadows appear to move which creates very distracting and ugly artifacts. There are two causes of this: the first is that as the camera moves and rotates, the shadow map for an individual cascade
+							that is tightly fitted to the cascade changes in size and rotation depending on the orientation. The second is that if the camera moves in such a way that the shadow map is offset by a fraction of a texel, the change in detail at the edges of the shadow map will
+							cause inconsistent values at the edges. Let's first talk about how to solve the former problem: stablizing the size and rotation.
+							</p>
+
+							<p>We can stablize the size of the shadow map by instead of tightly fitting our projection matrix to the cascade, wrapping the cascade in a sphere and then tightly fitting our projection matrix to that instead. This may not be immediately clear how this solves the problem, but this figure (from Michal Valient's article "Stable Rendering of Cascaded Shadow Maps" in ShaderX 6) demonstrates nicely:
+								<span class="image smallfit"><img src="images/csmfigure1.png"></span>
+							</p>
+
+							<p>As shown in the figure above, instead of re-sizing or re-orienting our maps to tightly fit the sub-frusta, we instead fit the bounding sphere. This has the small drawback of wasting some memory due to overlap, but is very effective at stablizing our final result. The calculation of these bounding spheres is fairly straightforward. Here's a snippet from my implementation in Walker Engine:</p>
+
+							<pre><code>
+BoundingSphere DirectionalLight::CalculateFrustumBoundingSphere(Camera&amp; camera, const float nearPlane, const float farPlane)
+	{
+		std::vector&lt;glm::vec4&gt; corners = camera.GetFrustumCornersWorldSpace(glm::perspective(glm::radians(camera.GetZoom()), camera.GetAspectRatio(), nearPlane, farPlane), camera.GetViewMatrix());
+
+		glm::vec3 center = glm::vec3(0.0f);
+		for (const auto&amp; v : corners)
+		{
+			center += glm::vec3(v);
+		}
+		center /= corners.size();
+
+		float radius = 0.0f;
+		for (uint32_t i = 0; i &lt; 8; i++) {
+			float distance = glm::length(glm::vec3(corners[i].x, corners[i].y, corners[i].z) - center);
+			radius = glm::max(radius, distance);
+		}
+		radius = std::round(radius * 16.0f) / 16.0f;
+
+		BoundingSphere result;
+		result.FrustumCenter = center;
+		result.Radius = radius;
+
+		return result;
+	}
+							</code></pre>
+
+							<p>Now, onto the second problem: offsets of sub-texel increments. In this scenario, we only want to adjust our shadow maps if the shadow view matrix has changed enough to be offset by at least one pixel. And in this case, we want to snap to a position that is an exact increment of our texel size.
+							We can do this in just a few steps. First, we need to determine our offset from the previous frame in view space. We can do this by subtracting the vector in view space of our "old" sub-frusta bounding sphere from our new one. Then, to determine if this offset is large enough to offset our 
+							shadow map by at least one pixel, we have to determine the size of our pixel, i.e. how much space does a pixel represent in view/world space. With that size, we multiply that with our offset, and determine if the resulting offset (in pixels) is greater than half a pixel. If so, we snap to the
+							next largest pixel increment and adjust our cascade's view-projection matrix accordingly. Here's another snippet demonstrating the process I just described:
+							</p>
+
+							<pre><code>
+bool DirectionalLight::CascadeNeedsUpdate(glm::mat4 shadowView, uint32_t cascadeNumber, glm::vec3 newCenter, glm::vec3 oldCenter, float radius, glm::vec3&amp; offset)
+	{
+		const glm::vec3 oldCenterViewSpace = glm::vec3(shadowView * glm::vec4(oldCenter, 1.0f));
+		const glm::vec3 newCenterViewSpace = glm::vec3(shadowView * glm::vec4(newCenter, 1.0f));
+		const glm::vec3 centerDiff = newCenterViewSpace - oldCenterViewSpace;
+
+		const float pixelSize = (float)m_ShadowMapWidth / (2.0f * radius);
+
+		const float pixelOffsetX = centerDiff.x * pixelSize;
+		const float pixelOffsetY = centerDiff.y * pixelSize;
+
+		const bool needUpdate = glm::abs(pixelOffsetX) &gt; 0.5f || glm::abs(pixelOffsetY) &gt; 0.5f;
+		if (needUpdate)
+		{
+			offset.x = glm::floor(0.5f + pixelOffsetX) / pixelSize;
+			offset.y = glm::floor(0.5f + pixelOffsetY) / pixelSize;
+			offset.z = centerDiff.z;
+		}
+
+		return needUpdate;
+	}
+							</code></pre>
+
 							<h2>Results</h2>
 
 							<p>My full implementation is open source as part of my Walker Engine renderer.</p>

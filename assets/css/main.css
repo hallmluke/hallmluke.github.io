@@ -2348,6 +2348,17 @@ input, select, textarea {
 			width: 100%;
 		}
 
+		.image.smallfit {
+			display: block;
+			margin: 0 0 2em 0;
+			width: 100%;
+			justify-content: center;
+		}
+
+		.image.smallfit img {
+			width: 60%;
+		}
+
 			.image.fit img {
 				width: 100%;
 			}
